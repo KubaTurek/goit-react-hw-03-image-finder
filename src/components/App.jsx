@@ -8,43 +8,43 @@ import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 import axios from 'axios';
 
-axios.defaults.baseURL = 'https://pixabay.com/api';
-const DEFAULT_URL =
-  '/?q=cat&page=1&key=31180890-6e7b1107714fce14b72fdcb4e&image_type=photo&orientation=horizontal&per_page=12';
-
 class App extends Component {
   state = {
     images: [],
-    url: DEFAULT_URL,
     page: 1,
-    searchedWord: 'cat',
+    searchedWord: '',
     isLoading: false,
     largeImageUrl: '',
+    loadMore: true,
   };
 
-  async componentDidMount() {
+  fetchApi = async (searchedWord, page) => {
     this.setState({
       isLoading: true,
     });
 
-    const response = await axios.get(this.state.url);
-    this.setState({
-      images: response.data.hits,
-    });
+    const newUrl =
+      'https://pixabay.com/api/?q=' +
+      searchedWord +
+      '&page=' +
+      page +
+      '&key=31180890-6e7b1107714fce14b72fdcb4e&image_type=photo&orientation=horizontal&per_page=12';
 
-    setTimeout(() => {
+    try {
+      const response = await axios.get(newUrl);
+      return response.data.hits;
+    } catch (error) {
+      console.log(error);
+    } finally {
       this.setState({
         isLoading: false,
       });
-    }, 400);
-  }
+    }
+  };
 
   onSubmit = async event => {
     event.preventDefault();
 
-    this.setState({
-      isLoading: true,
-    });
     const enterredValue = event.target.input.value;
 
     if (enterredValue === '') {
@@ -57,15 +57,9 @@ class App extends Component {
     }
     event.target.input.value = '';
 
-    const newUrl =
-      'https://pixabay.com/api/?q=' +
-      enterredValue +
-      '&page=' +
-      1 +
-      '&key=31180890-6e7b1107714fce14b72fdcb4e&image_type=photo&orientation=horizontal&per_page=12';
-    const response = await axios.get(newUrl);
+    const results = await this.fetchApi(enterredValue, 1);
 
-    if (response.data.hits.length === 0) {
+    if (results.length === 0) {
       this.setState({
         isLoading: false,
       });
@@ -73,17 +67,11 @@ class App extends Component {
       return;
     }
     this.setState({
-      url: newUrl,
       searchedWord: enterredValue,
       page: 1,
+      isLoading: false,
+      images: results,
     });
-
-    setTimeout(() => {
-      this.setState({
-        isLoading: false,
-        images: response.data.hits,
-      });
-    }, 400);
   };
 
   showGallery = url => {
@@ -112,26 +100,25 @@ class App extends Component {
   };
 
   handleLoadMore = async () => {
-    this.setState({
-      isLoading: true,
-    });
-    const url =
-      'https://pixabay.com/api/?q=' +
-      this.state.searchedWord +
-      '&page=' +
-      [this.state.page + 1] +
-      '&key=31180890-6e7b1107714fce14b72fdcb4e&image_type=photo&orientation=horizontal&per_page=12';
-    const response = await axios.get(url);
+    const results = await this.fetchApi(
+      this.state.searchedWord,
+      this.state.page + 1
+    );
 
-    setTimeout(() => {
-      this.setState(prevState => {
-        return {
-          page: prevState.page + 1,
-          images: [...prevState.images, ...response.data.hits],
-          isLoading: false,
-        };
-      });
-    }, 400);
+
+   if (results.length < 12) {
+
+    this.setState({
+      loadMore: false
+    })
+   }
+
+    this.setState(prevState => {
+      return {
+        page: prevState.page + 1,
+        images: [...prevState.images, ...results],
+      };
+    });
   };
 
   render() {
@@ -142,7 +129,7 @@ class App extends Component {
         <ImageGallery>
           <ImageGalleryItem images={images} handleClick={this.showGallery} />
         </ImageGallery>
-        {this.state.images.length > 0 && (
+        {this.state.images.length > 0 && this.state.loadMore === true && (
           <Button handleClick={this.handleLoadMore} />
         )}
         {this.state.isLoading && <Loader />}
