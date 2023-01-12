@@ -105,13 +105,11 @@ class App extends Component {
       this.state.page + 1
     );
 
-
-   if (results.length < 12) {
-
-    this.setState({
-      loadMore: false
-    })
-   }
+    if (results.length < 12) {
+      this.setState({
+        loadMore: false,
+      });
+    }
 
     this.setState(prevState => {
       return {
